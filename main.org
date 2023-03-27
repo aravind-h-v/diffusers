@@ -1,0 +1,66 @@
+#+begin_src conf :tangle ./git_add.txt
+  src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
+  src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
+  main.org
+#+end_src
+
+#+begin_src conf :tangle ./git_rm.txt
+  #main.org#
+  .#main.org
+#+end_src
+
+#+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_add.sh
+  sed 's@^@("git" "add" "@g ; s@$@");@g' './git_add.txt' | '/bin/sh'
+#+end_src
+
+#+begin_src sh :results output :shebang #!/bin/sh :tangle ./clean_rm.sh
+  sed 's@^@("rm" "-vf" "--" "@g ; s@$@");@g' './git_rm.txt' | '/bin/sh'
+#+end_src
+
+#+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_rm.sh
+  ./git_add.sh
+  ./clean_rm.sh
+#+end_src
+
+#+RESULTS:
+: removed '.#main.org'
+
+#+begin_src sh :results output :shebang #!/bin/sh
+  git status
+#+end_src
+
+#+RESULTS:
+#+begin_example
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	new file:   main.org
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   main.org
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.#main.org
+	clean_rm.sh
+	git_add.sh
+	git_add.txt
+	git_rm.sh
+	git_rm.txt
+
+#+end_example
+
+#+begin_src sh :results output :shebang #!/bin/sh
+  MESSAGE='Started the changes'
+  git commit -m "${MESSAGE}."
+#+end_src
+
+#+begin_src sh :results output :shebang #!/bin/sh
+  git push
+#+end_src
+
+#+RESULTS:
