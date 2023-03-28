@@ -17,7 +17,7 @@
 #+end_src
 
 #+begin_src sh :results output :shebang #!/bin/sh :tangle ./clean_rm.sh
-  sed 's@^@("rm" "-vf" "--" "@g ; s@$@");@g' './git_rm.txt' | '/bin/sh'
+  sed 's@^@("rm" "-vf" "--" "@g ; s@$@");@g' './clean_rm.txt' | '/bin/sh'
 #+end_src
 
 #+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_update.sh
@@ -55,18 +55,19 @@ Untracked files:
 	git_rm.sh
 	git_rm.txt
 	git_update.sh
+	src/diffusers/pipelines/stable_diffusion/#pipeline_stable_diffusion_img2img.py#
+	src/diffusers/pipelines/stable_diffusion/.#pipeline_stable_diffusion_img2img.py
 
 #+end_example
 
 #+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='Started changing the pipeline for unclip'
+  MESSAGE='Mostly done with image on unclip'
   git commit -m "${MESSAGE}."
 #+end_src
 
 #+RESULTS:
-: [main d5bc1127] Started changing the pipeline for unclip.
-:  3 files changed, 195 insertions(+), 87 deletions(-)
-:  create mode 100644 pyproject.toml.bak
+: [main f97a1b23] Mostly done with image on unclip.
+:  2 files changed, 98 insertions(+), 6 deletions(-)
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push

@@ -765,6 +765,7 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         seed_image: Union[torch.FloatTensor, PIL.Image.Image] = None,
         image: Union[torch.FloatTensor, PIL.Image.Image] = None,
         prompt: Union[str, List[str]] = None,
+        strength: float = 0.8,
         height: Optional[int] = None,
         width: Optional[int] = None,
         num_inference_steps: int = 20,
@@ -913,6 +914,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         )
 
         # 4. Encoder input image
+
+        seed_image = self.image_processor.preprocess(seed_image)
         noise_level = torch.tensor([noise_level], device=device)
         image_embeds = self._encode_image(
             image=image,
@@ -927,7 +930,12 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
 
         # 5. Prepare timesteps
         self.scheduler.set_timesteps(num_inference_steps, device=device)
-        timesteps = self.scheduler.timesteps
+        timesteps, num_inference_steps = self.get_timesteps(
+            num_inference_steps, strength, device)
+        latent_timestep = timesteps[:1].repeat(batch_size *
+                                               num_images_per_prompt)
+
+        # timesteps = self.scheduler.timesteps
 
         # 6. Prepare latent variables
         num_channels_latents = self.unet.in_channels
@@ -939,8 +947,9 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             dtype=prompt_embeds.dtype,
             device=device,
             generator=generator,
-            latents=latents,
-        )
+            image=seed_image,
+            timestep=latent_timestep,
+            latents=latents)
 
         # 7. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
