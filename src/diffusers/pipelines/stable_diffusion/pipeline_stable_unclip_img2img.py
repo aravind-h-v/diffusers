@@ -176,7 +176,6 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             scheduler=scheduler,
             vae=vae,
             safety_checker=safety_checker,
-            feature_extractor=feature_extractor,
         )
 
         self.vae_scale_factor = 2**(len(self.vae.config.block_out_channels) -

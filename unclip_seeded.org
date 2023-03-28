@@ -1,0 +1,674 @@
+* Interesting links:
+
+** Finetune dreambooth:
+https://huggingface.co/docs/diffusers/optimization/xformers
+
+** Stable diffusion mixer:
+https://github.com/justinpinkney/stable-diffusion#image-mixer
+
+* ENV Related:
+
+** Install ENV:
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./shrc_install.sh
+  DIR="${HOME}/DREAMBOOTH"
+  mkdir -pv -- "${DIR}"
+  cd "${DIR}"
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./shrc_install.sh
+  . /opt/anaconda/bin/activate
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./shrc_install.sh
+  conda create -n dreambooth
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./shrc_install.sh
+  conda activate dreambooth
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./shrc_install.sh
+  conda install \
+      cython \
+      ipython \
+      jupyter \
+      jupyterlab \
+      matplotlib \
+      nbconvert \
+      numpy \
+      opencv \
+      pandas \
+      python=3.9 \
+      scikit-learn \
+      scikit-learn-intelex \
+      scipy \
+      tqdm \
+  ;
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./shrc_install.sh
+  pip install \
+      --extra-index-url 'https://developer.download.nvidia.com/compute/redist' \
+          'PyQt6' \
+          'streamlit' \
+          'gradio' \
+          'termcolor' \
+          'yapf' \
+          'python-lsp-server' \
+          'pudb' \
+          'gdown' \
+          'test-tube' \
+          'omegaconf' \
+          'imageio' \
+          'imageio-ffmpeg' \
+          'nvidia-dali-cuda110' \
+          'albumentations' \
+          'einops' \
+          'fire' \
+          'ftfy' \
+          'Jinja2' \
+          'tensorboard' \
+          'torch==1.13.1' \
+          'torchvision==0.14.1' \
+          'torchaudio==0.13.1' \
+          'torch-fidelity' \
+          'pytorch-lightning==1.7.7' \
+          'torchmetrics' \
+          'timm' \
+          'kornia' \
+          'salesforce-lavis' \
+          'xformers' \
+          'transformers' \
+          'accelerate' \
+          'datasets' \
+          'diffusers' \
+          'evaluate' \
+          'webdataset' \
+          'deepspeed' \
+          '-e' 'git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers' \
+          '-e' 'git+https://github.com/openai/CLIP.git@main#egg=clip' \
+          '-e' 'git+https://github.com/justinpinkney/nomi.git@e9ded23b7e2269cc64d39683e1bf3c0319f552ab#egg=nomi' \
+  ;
+#+end_src
+
+** Activate ENV:
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./shrc_activate.sh
+  DIR="${HOME}/DREAMBOOTH"
+  cd "${DIR}"
+  . /opt/anaconda/bin/activate
+  conda activate dreambooth
+#+end_src
+
+* Image mixing:
+
+** CD to the location:
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./prepare_mixer.sh
+  DIR="${HOME}/DREAMBOOTH"
+  cd "${DIR}"
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./prepare_mixer.sh
+  git clone https://github.com/justinpinkney/stable-diffusion.git
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./prepare_mixer.sh
+  cd stable-diffusion
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./prepare_mixer.sh
+  git checkout 1c8a598f312e54f614d1b9675db0e66382f7e23c
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./prepare_mixer.sh
+  pip install -e .
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./prepare_mixer.sh
+  python scripts/gradio_image_mixer.py
+#+end_src
+
+* Dreambooth inference:
+
+** Img2Img pipeline:
+
+*** Includes:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+import requests
+import torch
+from PIL import Image
+from io import BytesIO
+
+from diffusers import StableDiffusionImg2ImgPipeline
+#+end_src
+
+*** Execution:
+
+**** Declare the device:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  device = "cuda"
+#+end_src
+
+**** Load the finetuned model:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  model_id_or_path = "out_model"
+  pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+      model_id_or_path, torch_dtype=torch.float16)
+  pipe = pipe.to(device)
+#+end_src
+
+**** Load and pre-process the image:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  init_image = Image.open("./in1.png").convert("RGB")
+  init_image = init_image.resize((512, 512))
+#+end_src
+
+**** Write the prompt:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  prompt = "a photo of zsechnk female model"
+#+end_src
+
+**** Generate the new image:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  images = pipe(prompt=prompt,
+                image=init_image,
+                strength=0.75,
+                num_inference_steps=50,
+                guidance_scale=7.5).images
+#+end_src
+
+**** Save the image:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  images[0].save("out1.png")
+#+end_src
+
+** Basic inference:
+
+*** Includes:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+from diffusers import StableDiffusionPipeline
+import torch
+#+end_src
+
+*** Infer:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  model_id = "out_model"
+  pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16).to("cuda")
+
+  prompt = "A photo of sks dog in a bucket"
+  image = pipe(prompt, num_inference_steps=50, guidance_scale=7.5).images[0]
+
+  image.save("dog-bucket.png")
+#+end_src
+
+* Latent space experiments:
+
+** COMMENT Sample:
+
+*** Includes:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+#+end_src
+
+*** Functions:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle function.py
+#+end_src
+
+*** Execution:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+#+end_src
+
+** Import huggingface and other stuff:
+
+*** Transformers:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+  from transformers import (CLIPTextModel, CLIPTokenizer)
+#+end_src
+
+*** Diffusers:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+  from diffusers import (AutoencoderKL, UNet2DConditionModel, PNDMScheduler,
+                         StableDiffusionPipeline, EulerDiscreteScheduler,
+                         LMSDiscreteScheduler)
+#+end_src
+
+*** OpenCV:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+  import cv2
+  import numpy as np
+#+end_src
+
+*** Torch:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+  import torch
+#+end_src
+
+*** Others:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+  from tqdm.auto import tqdm
+#+end_src
+
+** Load the models:
+
+*** The VAE:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  # 1. Load the autoencoder model which will be used to decode the latents into image space.
+  vae = AutoencoderKL.from_pretrained("CompVis/stable-diffusion-v1-4",
+                                      subfolder="vae")
+#+end_src
+
+*** The text encoder:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  # 2. Load the tokenizer and text encoder to tokenize and encode the text.
+  tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+  text_encoder = CLIPTextModel.from_pretrained("openai/clip-vit-large-patch14")
+#+end_src
+
+*** The denoising unet:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  # 3. The UNet model for generating the latents.
+  unet = UNet2DConditionModel.from_pretrained("CompVis/stable-diffusion-v1-4",
+                                              subfolder="unet")
+#+end_src
+
+*** Load the scheduler:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  scheduler = LMSDiscreteScheduler(beta_start=0.00085,
+                                   beta_end=0.012,
+                                   beta_schedule="scaled_linear",
+                                   num_train_timesteps=1000)
+#+end_src
+
+** Function to load the torch device:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle function.py
+  def get_device():
+      device = "cpu"
+      # if torch.cuda.is_available():
+      #     torch.backends.cudnn.benchmark = True
+      #     torch.backends.cuda.matmul.allow_tf32 = True
+      #     device = "cuda:0"
+
+      device = torch.device(device)
+      return device
+#+end_src
+
+** Load the device:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  torch_device = get_device()
+  vae.to(torch_device)
+  text_encoder.to(torch_device)
+  unet.to(torch_device)
+#+end_src
+
+** Function to encode 2 images using autoencoder:
+
+*** Function to load and process the input image:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle function.py
+  def load_and_process_image(img_path):
+      img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+      img = cv2.resize(img, (512, 512), cv2.INTER_CUBIC)
+      img = np.transpose(img, (2, 0, 1))
+      img = img.astype(dtype=np.float32)
+      img = (img / 127.5) - 1.0
+      img = torch.tensor(img)
+      img = img.unsqueeze(0)
+      img = img.to(torch_device)
+      return img
+#+end_src
+
+*** Function to do the encoding:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle function.py
+  def encode_image_to_latents(img):
+      img = vae.encode(img)
+      img = img.latent_dist.sample()
+      return img
+#+end_src
+
+*** Function to decode the image from latents:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle function.py
+  def decode_image_from_latents(img):
+      img = vae.decode(img).sample
+      img = (img / 2 + 0.5).clamp(0, 1)
+      img = img.cpu().permute(0, 2, 3, 1).float().detach().numpy()
+      img = img * 255
+      img = img.reshape((img.shape[1], img.shape[2], img.shape[3]))
+      img = img.astype(dtype=np.uint8)
+      return img
+#+end_src
+
+*** Encode 2 images:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle function.py
+  def encode_2_images(path1, path2):
+      img1 = load_and_process_image(path1)
+      img1 = encode_image_to_latents(img1)
+
+      img2 = load_and_process_image(path2)
+      img2 = encode_image_to_latents(img2)
+
+      # res = (img1 + img2) / 2.0
+      res = torch.cat([img1, img2], dim=1)
+
+      return res
+#+end_src
+
+*** Decode the latents after rescaling:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle function.py
+  def decode_latents_proper(latents):
+      latents = 1 / vae.config.scaling_factor * latents
+      image = vae.decode(latents).sample
+      image = (image / 2 + 0.5).clamp(0, 1)
+      # we always cast to float32 as this does not cause significant overhead and is compatible with bfloat16
+      image = image.cpu().permute(0, 2, 3, 1).float().detach().numpy()
+      return image
+#+end_src
+
+*** Test:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  latents = encode_2_images('./in.png', './in2.png')
+  img = decode_latents_proper(latents)
+#+end_src
+
+** COMMENT JUNK:
+
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  # prompt = ["a photograph of an astronaut riding a horse"]
+  prompt = [
+      "Model, Intricate, High Detail, Sharp focus, Elegant, Octane, Good Lighting, Photoshoot, Frontal Pose, High Quality, PhotoRealistic, Detailed"
+  ]
+
+  negative_prompt = [
+      "Anime, Low Quality, Jewellery, Vein, Nerve, Blurry, Tattoo, Hair, Neck Band, Cloth, Ugly, Deformed, Disfigured"
+  ]
+
+  height = 512  # default height of Stable Diffusion
+  width = 512  # default width of Stable Diffusion
+
+  num_inference_steps = 0  # Number of denoising steps
+
+  guidance_scale = 7.5  # Scale for classifier-free guidance
+
+  generator = torch.manual_seed(
+      0)  # Seed generator to create the inital latent noise
+
+  batch_size = len(prompt)
+
+  text_input = tokenizer(prompt,
+                         padding="max_length",
+                         max_length=tokenizer.model_max_length,
+                         truncation=True,
+                         return_tensors="pt")
+
+  text_embeddings = text_encoder(text_input.input_ids.to(torch_device))[0]
+#+end_src
+
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  max_length = text_input.input_ids.shape[-1]
+  uncond_input = tokenizer([""] * batch_size,
+                           padding="max_length",
+                           max_length=max_length,
+                           return_tensors="pt")
+  uncond_embeddings = text_encoder(uncond_input.input_ids.to(torch_device))[0]
+
+  text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+
+  # latents = torch.randn(
+  #     (batch_size, unet.in_channels, height // 8, width // 8),
+  #     generator=generator,
+  # )
+
+  latents = encode_2_images(path1="in.png", path2="in2.png")
+
+  latents = latents.to(torch_device)
+
+  # scheduler.set_timesteps(num_inference_steps)
+
+  # latents = latents * scheduler.init_noise_sigma
+#+end_src
+
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  scheduler.set_timesteps(num_inference_steps)
+
+  for t in tqdm(scheduler.timesteps):
+      # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+      latent_model_input = torch.cat([latents] * 2)
+
+      latent_model_input = scheduler.scale_model_input(latent_model_input, timestep=t)
+
+      # predict the noise residual
+      with torch.no_grad():
+          noise_pred = unet(latent_model_input, t, encoder_hidden_states=text_embeddings).sample
+
+      # perform guidance
+      noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+      noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+
+      # compute the previous noisy sample x_t -> x_t-1
+      latents = scheduler.step(noise_pred, t, latents).prev_sample
+#+end_src
+
+
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  # latents = 1 / 0.18215 * latents
+  # with torch.no_grad():
+  #     image = vae.decode(latents).sample
+
+  image = decode_latents_proper(latents)
+#+end_src
+
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  images = (image * 255).round().astype("uint8")
+  cv2.imwrite("./out.png", images[0])
+  # pil_images = [Image.fromarray(image) for image in images]
+  # pil_images[0]
+#+end_src
+
+** COMMENT Junk
+
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  pipeline = StableDiffusionPipeline.from_pretrained(
+      "CompVis/stable-diffusion-v1-4")
+  pipeline.scheduler = EulerDiscreteScheduler.from_config(
+      pipeline.scheduler.config)
+
+  # or
+  euler_scheduler = EulerDiscreteScheduler.from_pretrained(
+      "CompVis/stable-diffusion-v1-4", subfolder="scheduler")
+  pipeline = StableDiffusionPipeline.from_pretrained(
+      "CompVis/stable-diffusion-v1-4", scheduler=euler_scheduler)
+#+end_src
+
+* Dreambooth training / finetuning:
+
+** Download the repo:
+#+begin_src sh :shebang #!/bin/sh :results output
+git clone 'https://github.com/huggingface/diffusers.git'
+#+end_src
+
+** Run the training for diffusion 1.4:
+
+*** 1:
+#+begin_src sh :shebang #!/bin/sh :results output
+  export MODEL_NAME="CompVis/stable-diffusion-v1-4"
+  export INSTANCE_DIR="./Person"
+  export OUTPUT_DIR='out_model'
+
+  python train_dreambooth.py \
+      --pretrained_model_name_or_path=$MODEL_NAME  \
+      --instance_data_dir=$INSTANCE_DIR \
+      --output_dir=$OUTPUT_DIR \
+      --instance_prompt="a photo of zsechnk male model" \
+      --resolution=512 \
+      --train_batch_size=1 \
+      --gradient_accumulation_steps=1 \
+      --learning_rate=5e-6 \
+      --lr_scheduler="constant" \
+      --lr_warmup_steps=0 \
+      --max_train_steps=400 \
+  ;
+#+end_src
+
+*** 2:
+#+begin_src sh :shebang #!/bin/sh :results output
+  export MODEL_NAME="CompVis/stable-diffusion-v1-4"
+  export INSTANCE_DIR="./Person"
+  export OUTPUT_DIR='out_model_better'
+  export CLASS_DIR="male_model_class"
+
+  python train_dreambooth.py \
+    --pretrained_model_name_or_path=$MODEL_NAME  \
+    --instance_data_dir=$INSTANCE_DIR \
+    --class_data_dir=$CLASS_DIR \
+    --output_dir=$OUTPUT_DIR \
+    --with_prior_preservation --prior_loss_weight=1.0 \
+    --instance_prompt="a photo of zsechnk male model" \
+    --class_prompt="a photo of male model" \
+    --resolution=512 \
+    --train_batch_size=1 \
+    --gradient_accumulation_steps=1 \
+    --learning_rate=5e-6 \
+    --lr_scheduler="constant" \
+    --lr_warmup_steps=0 \
+    --num_class_images=200 \
+    --max_train_steps=800 \
+  ;
+#+end_src
+
+*** 3:
+#+begin_src sh :shebang #!/bin/sh :results output
+  export MODEL_NAME="CompVis/stable-diffusion-v1-4"
+  export INSTANCE_DIR="./Person"
+  export OUTPUT_DIR='out_model'
+
+  accelerate launch train_dreambooth.py \
+      --pretrained_model_name_or_path=$MODEL_NAME  \
+      --instance_data_dir=$INSTANCE_DIR \
+      --output_dir=$OUTPUT_DIR \
+      --instance_prompt="a photo of sks dog" \
+      --resolution=512 \
+      --train_batch_size=1 \
+      --gradient_accumulation_steps=1 \
+      --learning_rate=5e-6 \
+      --lr_scheduler="constant" \
+      --lr_warmup_steps=0 \
+      --max_train_steps=400 \
+  ;
+#+end_src
+
+** Run the training for diffusion 2.1 UnClip:
+
+*** 1:
+#+begin_src sh :shebang #!/bin/sh :results output
+  export MODEL_NAME="stabilityai/stable-diffusion-2-1-unclip"
+  export INSTANCE_DIR="Person"
+  export OUTPUT_DIR='out_model_21_Person'
+
+  python train_dreambooth.py \
+      "--pretrained_model_name_or_path=${MODEL_NAME}"  \
+      "--instance_data_dir=${INSTANCE_DIR}" \
+      "--output_dir=${OUTPUT_DIR}" \
+      --instance_prompt="a photo of qsczsethmfby" \
+      --resolution=512 \
+      --train_batch_size=1 \
+      --gradient_accumulation_steps=1 \
+      --learning_rate=5e-6 \
+      --lr_scheduler="constant" \
+      --lr_warmup_steps=0 \
+      --max_train_steps=400 \
+  ;
+#+end_src
+
+** Run the training for diffusion 2.1:
+
+*** 1:
+#+begin_src sh :shebang #!/bin/sh :results output
+  export MODEL_NAME="stabilityai/stable-diffusion-2-1"
+  export INSTANCE_DIR="Person"
+  export OUTPUT_DIR='out_model_21_Person'
+
+  python train_dreambooth.py \
+      "--pretrained_model_name_or_path=${MODEL_NAME}"  \
+      "--instance_data_dir=${INSTANCE_DIR}" \
+      "--output_dir=${OUTPUT_DIR}" \
+      --instance_prompt="a photo of qsczsethmfby" \
+      --resolution=512 \
+      --train_batch_size=1 \
+      --gradient_accumulation_steps=1 \
+      --learning_rate=5e-6 \
+      --lr_scheduler="constant" \
+      --lr_warmup_steps=0 \
+      --max_train_steps=400 \
+  ;
+#+end_src
+
+*** 1:
+#+begin_src sh :shebang #!/bin/sh :results output
+  export MODEL_NAME="stabilityai/stable-diffusion-2-1"
+  export INSTANCE_DIR="SUMANTH_IMAGES"
+  export OUTPUT_DIR='out_model_21'
+
+  python train_dreambooth.py \
+      "--pretrained_model_name_or_path=${MODEL_NAME}"  \
+      "--instance_data_dir=${INSTANCE_DIR}" \
+      "--output_dir=${OUTPUT_DIR}" \
+      --instance_prompt="a photo of qsczsethmfby" \
+      --resolution=512 \
+      --train_batch_size=1 \
+      --gradient_accumulation_steps=1 \
+      --learning_rate=5e-6 \
+      --lr_scheduler="constant" \
+      --lr_warmup_steps=0 \
+      --max_train_steps=400 \
+  ;
+#+end_src
+
+#+begin_src sh :shebang #!/bin/sh :results output :tangle ./convert.sh
+  MODEL_PATH='./sumanth_model_21'
+  CHECKPOINT_PATH='./sumanth_model_21.ckpt'
+  python convert_diffusers_to_original_stable_diffusion.py \
+      --model_path "${MODEL_PATH}" \
+      --checkpoint_path "${CHECKPOINT_PATH}" \
+      --half \
+      --use_safetensors \
+  ;
+#+end_src
+
+* Stable diffusion clip:
+
+
+*** Includes:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle include.py
+  import requests
+  import torch
+  from PIL import Image
+  from io import BytesIO
+  from diffusers import StableUnCLIPImg2ImgPipeline
+#+end_src
+
+*** Execution:
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  # pipe = StableUnCLIPImg2ImgPipeline.from_pretrained(
+  #     "stabilityai/stable-diffusion-2-1-unclip", torch_dtype=torch.float16, variation="fp16"
+  # )
+
+  pipe = StableUnCLIPImg2ImgPipeline.from_pretrained(
+      "stabilityai/stable-diffusion-2-1-unclip")
+
+  pipe = pipe.to("cpu")
+  # pipe = pipe.to("cuda")
+
+  init_image = Image.open("in1.png").convert("RGB")
+  prompt_image = Image.open("in2.png").convert("RGB")
+#+end_src
+
+#+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
+  #Pipe to make the variation
+  images = pipe(image = init_image, prompt='wearing a red shirt', seed_image=prompt_image).images
+  images[0].save("out2.png")
+#+end_src
+
+* Scripts part:
+
+** unify the files:
+#+begin_src sh :shebang #!/bin/sh :results output
+  cat include.py function.py execution.py | expand | grep -v '^#!' | yapf > main.py
+#+end_src
+
+#+RESULTS:

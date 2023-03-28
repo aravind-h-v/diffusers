@@ -3,6 +3,7 @@
   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
   main.org
   pyproject.toml.bak
+  unclip_seeded.org
 #+end_src
 
 #+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_add.sh
@@ -26,6 +27,8 @@
 #+end_src
 
 #+RESULTS:
+: removed 'src/diffusers/pipelines/stable_diffusion/#pipeline_stable_diffusion_img2img.py#'
+: removed 'src/diffusers/pipelines/stable_diffusion/.#pipeline_stable_diffusion_img2img.py'
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git status
@@ -36,15 +39,12 @@
 On branch main
 Your branch is up to date with 'origin/main'.
 
-Changes to be committed:
-  (use "git restore --staged <file>..." to unstage)
-	modified:   main.org
-	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
-
 Changes not staged for commit:
   (use "git add/rm <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
+	modified:   main.org
 	deleted:    pyproject.toml
+	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)
@@ -55,19 +55,19 @@ Untracked files:
 	git_rm.sh
 	git_rm.txt
 	git_update.sh
-	src/diffusers/pipelines/stable_diffusion/#pipeline_stable_diffusion_img2img.py#
-	src/diffusers/pipelines/stable_diffusion/.#pipeline_stable_diffusion_img2img.py
+	
 
+no changes added to commit (use "git add" and/or "git commit -a")
 #+end_example
 
 #+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='Mostly done with image on unclip'
+  MESSAGE='1st version of unclip done'
   git commit -m "${MESSAGE}."
 #+end_src
 
 #+RESULTS:
-: [main f97a1b23] Mostly done with image on unclip.
-:  2 files changed, 98 insertions(+), 6 deletions(-)
+: [main ea5cefb3] 1st version of unclip done.
+:  2 files changed, 18 insertions(+), 8 deletions(-)
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
