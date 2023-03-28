@@ -6,6 +6,8 @@
   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
   unclip_seeded.org
+  sample/in1.png
+  sample/in2.png
 #+end_src
 
 #+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_add.sh
@@ -39,12 +41,6 @@
 On branch main
 Your branch is up to date with 'origin/main'.
 
-Changes to be committed:
-  (use "git restore --staged <file>..." to unstage)
-	modified:   main.org
-	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
-	modified:   unclip_seeded.org
-
 Changes not staged for commit:
   (use "git add/rm <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
@@ -52,6 +48,7 @@ Changes not staged for commit:
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)
+	.#main.org
 	clean_rm.sh
 	clean_rm.txt
 	git_add.sh
@@ -60,17 +57,19 @@ Untracked files:
 	git_rm.txt
 	git_update.sh
 
+no changes added to commit (use "git add" and/or "git commit -a")
 #+end_example
 
 #+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='Working seeded unclip pipeline'
+  MESSAGE='Added comparison between seeded and unseeded unclip works'
   git commit -m "${MESSAGE}."
 #+end_src
 
 #+RESULTS:
-: [main a44ae6fd] Working seeded unclip pipeline.
-:  3 files changed, 684 insertions(+), 11 deletions(-)
-:  create mode 100644 unclip_seeded.org
+: [main 1b1aaf09] Added comparison between seeded and unseeded unclip works.
+:  5 files changed, 20 insertions(+), 14 deletions(-)
+:  create mode 100644 sample/out_seeded.png
+:  create mode 100644 sample/out_unseeded.png
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
