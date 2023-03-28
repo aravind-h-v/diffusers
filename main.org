@@ -12,6 +12,8 @@
 #+begin_src conf :tangle ./clean_rm.txt
   #main.org#
   .#main.org
+  src/diffusers/pipelines/stable_diffusion/#pipeline_stable_diffusion_img2img.py#
+  src/diffusers/pipelines/stable_diffusion/.#pipeline_stable_diffusion_img2img.py
 #+end_src
 
 #+begin_src sh :results output :shebang #!/bin/sh :tangle ./clean_rm.sh
@@ -37,7 +39,6 @@ Your branch is up to date with 'origin/main'.
 Changes to be committed:
   (use "git restore --staged <file>..." to unstage)
 	modified:   main.org
-	new file:   pyproject.toml.bak
 	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
 
 Changes not staged for commit:
@@ -58,15 +59,14 @@ Untracked files:
 #+end_example
 
 #+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='Started the changes'
+  MESSAGE='Started changing the pipeline for unclip'
   git commit -m "${MESSAGE}."
 #+end_src
 
 #+RESULTS:
-: [main 0f53c271] Started the changes.
-:  2 files changed, 886 insertions(+)
-:  create mode 100644 main.org
-:  create mode 100644 src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
+: [main d5bc1127] Started changing the pipeline for unclip.
+:  3 files changed, 195 insertions(+), 87 deletions(-)
+:  create mode 100644 pyproject.toml.bak
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push

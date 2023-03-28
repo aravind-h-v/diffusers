@@ -175,10 +175,17 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             unet=unet,
             scheduler=scheduler,
             vae=vae,
+            safety_checker=safety_checker,
+            feature_extractor=feature_extractor,
         )
 
         self.vae_scale_factor = 2**(len(self.vae.config.block_out_channels) -
                                     1)
+
+        self.image_processor = VaeImageProcessor(
+            vae_scale_factor=self.vae_scale_factor)
+        self.register_to_config(
+            requires_safety_checker=requires_safety_checker, )
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.enable_vae_slicing
     def enable_vae_slicing(self):
@@ -473,6 +480,16 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
 
         return image_embeds
 
+    def run_safety_checker(self, image, device, dtype):
+        feature_extractor_input = self.image_processor.postprocess(
+            image, output_type="pil")
+        safety_checker_input = self.feature_extractor(
+            feature_extractor_input, return_tensors="pt").to(device)
+        image, has_nsfw_concept = self.safety_checker(
+            images=image,
+            clip_input=safety_checker_input.pixel_values.to(dtype))
+        return image, has_nsfw_concept
+
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.decode_latents
     def decode_latents(self, latents):
         latents = 1 / self.vae.config.scaling_factor * latents
@@ -584,6 +601,16 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
                     "`image` has to be of type `torch.FloatTensor` or `PIL.Image.Image` or `List[PIL.Image.Image]` but is"
                     f" {type(image)}")
 
+    def get_timesteps(self, num_inference_steps, strength, device):
+        # get the original timestep using init_timestep
+        init_timestep = min(int(num_inference_steps * strength),
+                            num_inference_steps)
+
+        t_start = max(num_inference_steps - init_timestep, 0)
+        timesteps = self.scheduler.timesteps[t_start:]
+
+        return timesteps, num_inference_steps - t_start
+
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.prepare_latents
     def prepare_latents(self,
                         batch_size,
@@ -593,15 +620,79 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
                         dtype,
                         device,
                         generator,
+                        image,
+                        timestep,
                         latents=None):
+
         shape = (batch_size, num_channels_latents,
                  height // self.vae_scale_factor,
                  width // self.vae_scale_factor)
+
         if isinstance(generator, list) and len(generator) != batch_size:
             raise ValueError(
                 f"You have passed a list of generators of length {len(generator)}, but requested an effective batch"
                 f" size of {batch_size}. Make sure the batch size matches the length of the generators."
             )
+
+        if image is not None:
+
+            num_images_per_prompt = 1
+
+            if not isinstance(image, (torch.Tensor, PIL.Image.Image, list)):
+                raise ValueError(
+                    f"`image` has to be of type `torch.Tensor`, `PIL.Image.Image` or list but is {type(image)}"
+                )
+
+            image = image.to(device=device, dtype=dtype)
+
+            if isinstance(generator, list):
+                init_latents = [
+                    self.vae.encode(image[i:i + 1]).latent_dist.sample(
+                        generator[i]) for i in range(batch_size)
+                ]
+                init_latents = torch.cat(init_latents, dim=0)
+            else:
+                init_latents = self.vae.encode(image).latent_dist.sample(
+                    generator)
+
+            init_latents = self.vae.config.scaling_factor * init_latents
+
+            if batch_size > init_latents.shape[
+                    0] and batch_size % init_latents.shape[0] == 0:
+                # expand init_latents for batch_size
+                deprecation_message = (
+                    f"You have passed {batch_size} text prompts (`prompt`), but only {init_latents.shape[0]} initial"
+                    " images (`image`). Initial images are now duplicating to match the number of text prompts. Note"
+                    " that this behavior is deprecated and will be removed in a version 1.0.0. Please make sure to update"
+                    " your script to pass as many initial images as text prompts to suppress this warning."
+                )
+                deprecate("len(prompt) != len(image)",
+                          "1.0.0",
+                          deprecation_message,
+                          standard_warn=False)
+                additional_image_per_prompt = batch_size // init_latents.shape[
+                    0]
+                init_latents = torch.cat([init_latents] *
+                                         additional_image_per_prompt,
+                                         dim=0)
+            elif batch_size > init_latents.shape[
+                    0] and batch_size % init_latents.shape[0] != 0:
+                raise ValueError(
+                    f"Cannot duplicate `image` of batch size {init_latents.shape[0]} to {batch_size} text prompts."
+                )
+            else:
+                init_latents = torch.cat([init_latents], dim=0)
+
+            shape = init_latents.shape
+            noise = randn_tensor(shape,
+                                 generator=generator,
+                                 device=device,
+                                 dtype=dtype)
+
+            # get latents
+            init_latents = self.scheduler.add_noise(init_latents, noise,
+                                                    timestep)
+            latents = init_latents
 
         if latents is None:
             latents = randn_tensor(shape,
@@ -671,6 +762,7 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
     @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
         self,
+        seed_image: Union[torch.FloatTensor, PIL.Image.Image] = None,
         image: Union[torch.FloatTensor, PIL.Image.Image] = None,
         prompt: Union[str, List[str]] = None,
         height: Optional[int] = None,
