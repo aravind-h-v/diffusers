@@ -761,9 +761,9 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
     @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
         self,
-        seed_image: Union[torch.FloatTensor, PIL.Image.Image] = None,
         image: Union[torch.FloatTensor, PIL.Image.Image] = None,
         prompt: Union[str, List[str]] = None,
+        seed_image: Union[torch.FloatTensor, PIL.Image.Image] = None,
         strength: float = 0.8,
         height: Optional[int] = None,
         width: Optional[int] = None,
@@ -914,7 +914,9 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
 
         # 4. Encoder input image
 
-        seed_image = self.image_processor.preprocess(seed_image)
+        if seed_image is not None:
+            seed_image = self.image_processor.preprocess(seed_image)
+
         noise_level = torch.tensor([noise_level], device=device)
         image_embeds = self._encode_image(
             image=image,

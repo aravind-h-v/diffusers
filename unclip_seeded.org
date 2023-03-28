@@ -660,7 +660,8 @@ git clone 'https://github.com/huggingface/diffusers.git'
 
 #+begin_src python :shebang #!/home/asd/.conda/envs/dreambooth/bin/python :tangle execution.py
   #Pipe to make the variation
-  images = pipe(image = init_image, prompt='wearing a red shirt', seed_image=prompt_image).images
+  # images = pipe(image = init_image, prompt='wearing a red shirt', seed_image=prompt_image).images
+  images = pipe(image = init_image, prompt='wearing a red shirt').images
   images[0].save("out2.png")
 #+end_src
 

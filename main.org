@@ -1,8 +1,10 @@
 #+begin_src conf :tangle ./git_add.txt
-  src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
-  src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
   main.org
   pyproject.toml.bak
+  sample/out_seeded.png
+  sample/out_unseeded.png
+  src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
+  src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
   unclip_seeded.org
 #+end_src
 
@@ -27,8 +29,6 @@
 #+end_src
 
 #+RESULTS:
-: removed 'src/diffusers/pipelines/stable_diffusion/#pipeline_stable_diffusion_img2img.py#'
-: removed 'src/diffusers/pipelines/stable_diffusion/.#pipeline_stable_diffusion_img2img.py'
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git status
@@ -39,12 +39,16 @@
 On branch main
 Your branch is up to date with 'origin/main'.
 
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   main.org
+	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
+	modified:   unclip_seeded.org
+
 Changes not staged for commit:
   (use "git add/rm <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
-	modified:   main.org
 	deleted:    pyproject.toml
-	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)
@@ -55,19 +59,18 @@ Untracked files:
 	git_rm.sh
 	git_rm.txt
 	git_update.sh
-	
 
-no changes added to commit (use "git add" and/or "git commit -a")
 #+end_example
 
 #+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='1st version of unclip done'
+  MESSAGE='Working seeded unclip pipeline'
   git commit -m "${MESSAGE}."
 #+end_src
 
 #+RESULTS:
-: [main ea5cefb3] 1st version of unclip done.
-:  2 files changed, 18 insertions(+), 8 deletions(-)
+: [main a44ae6fd] Working seeded unclip pipeline.
+:  3 files changed, 684 insertions(+), 11 deletions(-)
+:  create mode 100644 unclip_seeded.org
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
