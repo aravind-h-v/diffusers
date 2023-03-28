@@ -1,5 +1,8 @@
 * Interesting links:
 
+** Issue raised for merging:
+https://github.com/huggingface/diffusers/issues/2858
+
 ** Finetune dreambooth:
 https://huggingface.co/docs/diffusers/optimization/xformers
 

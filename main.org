@@ -41,6 +41,12 @@
 On branch main
 Your branch is up to date with 'origin/main'.
 
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   main.org
+	new file:   sample/in1.png
+	new file:   sample/in2.png
+
 Changes not staged for commit:
   (use "git add/rm <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
@@ -48,7 +54,6 @@ Changes not staged for commit:
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)
-	.#main.org
 	clean_rm.sh
 	clean_rm.txt
 	git_add.sh
@@ -57,19 +62,18 @@ Untracked files:
 	git_rm.txt
 	git_update.sh
 
-no changes added to commit (use "git add" and/or "git commit -a")
 #+end_example
 
 #+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='Added comparison between seeded and unseeded unclip works'
+  MESSAGE='Added comparison between seeded and unseeded unclip works, the input images unsed are also included'
   git commit -m "${MESSAGE}."
 #+end_src
 
 #+RESULTS:
-: [main 1b1aaf09] Added comparison between seeded and unseeded unclip works.
-:  5 files changed, 20 insertions(+), 14 deletions(-)
-:  create mode 100644 sample/out_seeded.png
-:  create mode 100644 sample/out_unseeded.png
+: [main 5102cc29] Added comparison between seeded and unseeded unclip works, the input images unsed are also included.
+:  3 files changed, 9 insertions(+), 10 deletions(-)
+:  create mode 100644 sample/in1.png
+:  create mode 100644 sample/in2.png
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
