@@ -2,28 +2,28 @@
   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
   main.org
-#+end_src
-
-#+begin_src conf :tangle ./git_rm.txt
-  #main.org#
-  .#main.org
+  pyproject.toml.bak
 #+end_src
 
 #+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_add.sh
   sed 's@^@("git" "add" "@g ; s@$@");@g' './git_add.txt' | '/bin/sh'
 #+end_src
 
+#+begin_src conf :tangle ./clean_rm.txt
+  #main.org#
+  .#main.org
+#+end_src
+
 #+begin_src sh :results output :shebang #!/bin/sh :tangle ./clean_rm.sh
   sed 's@^@("rm" "-vf" "--" "@g ; s@$@");@g' './git_rm.txt' | '/bin/sh'
 #+end_src
 
-#+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_rm.sh
+#+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_update.sh
   ./git_add.sh
   ./clean_rm.sh
 #+end_src
 
 #+RESULTS:
-: removed '.#main.org'
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git status
@@ -36,21 +36,24 @@ Your branch is up to date with 'origin/main'.
 
 Changes to be committed:
   (use "git restore --staged <file>..." to unstage)
-	new file:   main.org
+	modified:   main.org
+	new file:   pyproject.toml.bak
+	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img.py
 
 Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
+  (use "git add/rm <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
-	modified:   main.org
+	deleted:    pyproject.toml
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)
-	.#main.org
 	clean_rm.sh
+	clean_rm.txt
 	git_add.sh
 	git_add.txt
 	git_rm.sh
 	git_rm.txt
+	git_update.sh
 
 #+end_example
 
@@ -58,6 +61,12 @@ Untracked files:
   MESSAGE='Started the changes'
   git commit -m "${MESSAGE}."
 #+end_src
+
+#+RESULTS:
+: [main 0f53c271] Started the changes.
+:  2 files changed, 886 insertions(+)
+:  create mode 100644 main.org
+:  create mode 100644 src/diffusers/pipelines/stable_diffusion/pipeline_stable_unclip_img2img_bak.py
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push

@@ -13,21 +13,33 @@
 # limitations under the License.
 
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Union
-
+import numpy as np
 import PIL
 import torch
-from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
 
-from diffusers.utils.import_utils import is_accelerate_available
-
-from ...models import AutoencoderKL, UNet2DConditionModel
+from ...configuration_utils import FrozenDict
+from ...image_processor import VaeImageProcessor
+from . import StableDiffusionPipelineOutput
 from ...models.embeddings import get_timestep_embedding
+from .safety_checker import StableDiffusionSafetyChecker
 from ...schedulers import KarrasDiffusionSchedulers
-from ...utils import is_accelerate_version, logging, randn_tensor, replace_example_docstring
-from ..pipeline_utils import DiffusionPipeline, ImagePipelineOutput
 from .stable_unclip_image_normalizer import StableUnCLIPImageNormalizer
 
+from transformers import (CLIPImageProcessor, CLIPTextModel, CLIPTokenizer,
+                          CLIPVisionModelWithProjection)
+
+from typing import (Any, Callable, Dict, List, Optional, Union)
+
+from ..pipeline_utils import (DiffusionPipeline, ImagePipelineOutput)
+
+from ...models import (AutoencoderKL, UNet2DConditionModel)
+
+from ...utils import (PIL_INTERPOLATION, deprecate, is_accelerate_available,
+                      is_accelerate_version, logging, randn_tensor,
+                      replace_example_docstring)
+
+from diffusers.utils.import_utils import is_accelerate_available
+from packaging import version
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -58,6 +70,31 @@ EXAMPLE_DOC_STRING = """
         >>> images[0].save("fantasy_landscape.png")
         ```
 """
+
+
+def preprocess(image):
+    if isinstance(image, torch.Tensor):
+        return image
+    elif isinstance(image, PIL.Image.Image):
+        image = [image]
+
+    if isinstance(image[0], PIL.Image.Image):
+        w, h = image[0].size
+        w, h = (x - x % 8 for x in (w, h))  # resize to integer multiple of 8
+
+        image = [
+            np.array(i.resize((w, h),
+                              resample=PIL_INTERPOLATION["lanczos"]))[None, :]
+            for i in image
+        ]
+        image = np.concatenate(image, axis=0)
+        image = np.array(image).astype(np.float32) / 255.0
+        image = image.transpose(0, 3, 1, 2)
+        image = 2.0 * image - 1.0
+        image = torch.from_numpy(image)
+    elif isinstance(image[0], torch.Tensor):
+        image = torch.cat(image, dim=0)
+    return image
 
 
 class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
@@ -106,6 +143,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
 
     vae: AutoencoderKL
 
+    _optional_components = ["safety_checker", "feature_extractor"]
+
     def __init__(
         self,
         # image encoding components
@@ -121,6 +160,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         scheduler: KarrasDiffusionSchedulers,
         # vae
         vae: AutoencoderKL,
+        safety_checker: StableDiffusionSafetyChecker,
+        requires_safety_checker: bool = True,
     ):
         super().__init__()
 
@@ -136,7 +177,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             vae=vae,
         )
 
-        self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
+        self.vae_scale_factor = 2**(len(self.vae.config.block_out_channels) -
+                                    1)
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.enable_vae_slicing
     def enable_vae_slicing(self):
@@ -165,7 +207,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         if is_accelerate_available():
             from accelerate import cpu_offload
         else:
-            raise ImportError("Please install accelerate via `pip install accelerate`")
+            raise ImportError(
+                "Please install accelerate via `pip install accelerate`")
 
         device = torch.device(f"cuda:{gpu_id}")
 
@@ -187,20 +230,28 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         method is called, and the model remains in GPU until the next model runs. Memory savings are lower than with
         `enable_sequential_cpu_offload`, but performance is much better due to the iterative execution of the `unet`.
         """
-        if is_accelerate_available() and is_accelerate_version(">=", "0.17.0.dev0"):
+        if is_accelerate_available() and is_accelerate_version(
+                ">=", "0.17.0.dev0"):
             from accelerate import cpu_offload_with_hook
         else:
-            raise ImportError("`enable_model_cpu_offload` requires `accelerate v0.17.0` or higher.")
+            raise ImportError(
+                "`enable_model_cpu_offload` requires `accelerate v0.17.0` or higher."
+            )
 
         device = torch.device(f"cuda:{gpu_id}")
 
         if self.device.type != "cpu":
             self.to("cpu", silence_dtype_warnings=True)
-            torch.cuda.empty_cache()  # otherwise we don't see the memory savings (but they probably exist)
+            torch.cuda.empty_cache(
+            )  # otherwise we don't see the memory savings (but they probably exist)
 
         hook = None
-        for cpu_offloaded_model in [self.text_encoder, self.image_encoder, self.unet, self.vae]:
-            _, hook = cpu_offload_with_hook(cpu_offloaded_model, device, prev_module_hook=hook)
+        for cpu_offloaded_model in [
+                self.text_encoder, self.image_encoder, self.unet, self.vae
+        ]:
+            _, hook = cpu_offload_with_hook(cpu_offloaded_model,
+                                            device,
+                                            prev_module_hook=hook)
 
         # We'll offload the last model manually.
         self.final_offload_hook = hook
@@ -216,11 +267,9 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         if not hasattr(self.unet, "_hf_hook"):
             return self.device
         for module in self.unet.modules():
-            if (
-                hasattr(module, "_hf_hook")
-                and hasattr(module._hf_hook, "execution_device")
-                and module._hf_hook.execution_device is not None
-            ):
+            if (hasattr(module, "_hf_hook")
+                    and hasattr(module._hf_hook, "execution_device")
+                    and module._hf_hook.execution_device is not None):
                 return torch.device(module._hf_hook.execution_device)
         return self.device
 
@@ -275,20 +324,21 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
                 return_tensors="pt",
             )
             text_input_ids = text_inputs.input_ids
-            untruncated_ids = self.tokenizer(prompt, padding="longest", return_tensors="pt").input_ids
+            untruncated_ids = self.tokenizer(prompt,
+                                             padding="longest",
+                                             return_tensors="pt").input_ids
 
-            if untruncated_ids.shape[-1] >= text_input_ids.shape[-1] and not torch.equal(
-                text_input_ids, untruncated_ids
-            ):
+            if untruncated_ids.shape[-1] >= text_input_ids.shape[
+                    -1] and not torch.equal(text_input_ids, untruncated_ids):
                 removed_text = self.tokenizer.batch_decode(
-                    untruncated_ids[:, self.tokenizer.model_max_length - 1 : -1]
-                )
+                    untruncated_ids[:, self.tokenizer.model_max_length - 1:-1])
                 logger.warning(
                     "The following part of your input was truncated because CLIP can only handle sequences up to"
                     f" {self.tokenizer.model_max_length} tokens: {removed_text}"
                 )
 
-            if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
+            if hasattr(self.text_encoder.config, "use_attention_mask"
+                       ) and self.text_encoder.config.use_attention_mask:
                 attention_mask = text_inputs.attention_mask.to(device)
             else:
                 attention_mask = None
@@ -299,12 +349,14 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             )
             prompt_embeds = prompt_embeds[0]
 
-        prompt_embeds = prompt_embeds.to(dtype=self.text_encoder.dtype, device=device)
+        prompt_embeds = prompt_embeds.to(dtype=self.text_encoder.dtype,
+                                         device=device)
 
         bs_embed, seq_len, _ = prompt_embeds.shape
         # duplicate text embeddings for each generation per prompt, using mps friendly method
         prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
-        prompt_embeds = prompt_embeds.view(bs_embed * num_images_per_prompt, seq_len, -1)
+        prompt_embeds = prompt_embeds.view(bs_embed * num_images_per_prompt,
+                                           seq_len, -1)
 
         # get unconditional embeddings for classifier free guidance
         if do_classifier_free_guidance and negative_prompt_embeds is None:
@@ -314,16 +366,14 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             elif type(prompt) is not type(negative_prompt):
                 raise TypeError(
                     f"`negative_prompt` should be the same type to `prompt`, but got {type(negative_prompt)} !="
-                    f" {type(prompt)}."
-                )
+                    f" {type(prompt)}.")
             elif isinstance(negative_prompt, str):
                 uncond_tokens = [negative_prompt]
             elif batch_size != len(negative_prompt):
                 raise ValueError(
                     f"`negative_prompt`: {negative_prompt} has batch size {len(negative_prompt)}, but `prompt`:"
                     f" {prompt} has batch size {batch_size}. Please make sure that passed `negative_prompt` matches"
-                    " the batch size of `prompt`."
-                )
+                    " the batch size of `prompt`.")
             else:
                 uncond_tokens = negative_prompt
 
@@ -336,7 +386,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
                 return_tensors="pt",
             )
 
-            if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
+            if hasattr(self.text_encoder.config, "use_attention_mask"
+                       ) and self.text_encoder.config.use_attention_mask:
                 attention_mask = uncond_input.attention_mask.to(device)
             else:
                 attention_mask = None
@@ -351,10 +402,13 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             # duplicate unconditional embeddings for each generation per prompt, using mps friendly method
             seq_len = negative_prompt_embeds.shape[1]
 
-            negative_prompt_embeds = negative_prompt_embeds.to(dtype=self.text_encoder.dtype, device=device)
+            negative_prompt_embeds = negative_prompt_embeds.to(
+                dtype=self.text_encoder.dtype, device=device)
 
-            negative_prompt_embeds = negative_prompt_embeds.repeat(1, num_images_per_prompt, 1)
-            negative_prompt_embeds = negative_prompt_embeds.view(batch_size * num_images_per_prompt, seq_len, -1)
+            negative_prompt_embeds = negative_prompt_embeds.repeat(
+                1, num_images_per_prompt, 1)
+            negative_prompt_embeds = negative_prompt_embeds.view(
+                batch_size * num_images_per_prompt, seq_len, -1)
 
             # For classifier free guidance, we need to do two forward passes.
             # Here we concatenate the unconditional and text embeddings into a single batch
@@ -390,7 +444,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
 
         if not image_embeds:
             if not isinstance(image, torch.Tensor):
-                image = self.feature_extractor(images=image, return_tensors="pt").pixel_values
+                image = self.feature_extractor(
+                    images=image, return_tensors="pt").pixel_values
 
             image = image.to(device=device, dtype=dtype)
             image_embeds = self.image_encoder(image).image_embeds
@@ -434,13 +489,15 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         # eta corresponds to η in DDIM paper: https://arxiv.org/abs/2010.02502
         # and should be between [0, 1]
 
-        accepts_eta = "eta" in set(inspect.signature(self.scheduler.step).parameters.keys())
+        accepts_eta = "eta" in set(
+            inspect.signature(self.scheduler.step).parameters.keys())
         extra_step_kwargs = {}
         if accepts_eta:
             extra_step_kwargs["eta"] = eta
 
         # check if the scheduler accepts generator
-        accepts_generator = "generator" in set(inspect.signature(self.scheduler.step).parameters.keys())
+        accepts_generator = "generator" in set(
+            inspect.signature(self.scheduler.step).parameters.keys())
         if accepts_generator:
             extra_step_kwargs["generator"] = generator
         return extra_step_kwargs
@@ -459,15 +516,16 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         image_embeds=None,
     ):
         if height % 8 != 0 or width % 8 != 0:
-            raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
+            raise ValueError(
+                f"`height` and `width` have to be divisible by 8 but are {height} and {width}."
+            )
 
-        if (callback_steps is None) or (
-            callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
-        ):
+        if (callback_steps is None) or (callback_steps is not None and
+                                        (not isinstance(callback_steps, int)
+                                         or callback_steps <= 0)):
             raise ValueError(
                 f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
-                f" {type(callback_steps)}."
-            )
+                f" {type(callback_steps)}.")
 
         if prompt is not None and prompt_embeds is not None:
             raise ValueError(
@@ -479,8 +537,11 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
                 "Provide either `prompt` or `prompt_embeds`. Cannot leave both `prompt` and `prompt_embeds` undefined."
             )
 
-        if prompt is not None and (not isinstance(prompt, str) and not isinstance(prompt, list)):
-            raise ValueError(f"`prompt` has to be of type `str` or `list` but is {type(prompt)}")
+        if prompt is not None and (not isinstance(prompt, str)
+                                   and not isinstance(prompt, list)):
+            raise ValueError(
+                f"`prompt` has to be of type `str` or `list` but is {type(prompt)}"
+            )
 
         if negative_prompt is not None and negative_prompt_embeds is not None:
             raise ValueError(
@@ -491,16 +552,14 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             if type(prompt) is not type(negative_prompt):
                 raise TypeError(
                     f"`negative_prompt` should be the same type to `prompt`, but got {type(negative_prompt)} !="
-                    f" {type(prompt)}."
-                )
+                    f" {type(prompt)}.")
 
         if prompt_embeds is not None and negative_prompt_embeds is not None:
             if prompt_embeds.shape != negative_prompt_embeds.shape:
                 raise ValueError(
                     "`prompt_embeds` and `negative_prompt_embeds` must have the same shape when passed directly, but"
                     f" got: `prompt_embeds` {prompt_embeds.shape} != `negative_prompt_embeds`"
-                    f" {negative_prompt_embeds.shape}."
-                )
+                    f" {negative_prompt_embeds.shape}.")
 
         if noise_level < 0 or noise_level >= self.image_noising_scheduler.config.num_train_timesteps:
             raise ValueError(
@@ -518,19 +577,26 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             )
 
         if image is not None:
-            if (
-                not isinstance(image, torch.Tensor)
-                and not isinstance(image, PIL.Image.Image)
-                and not isinstance(image, list)
-            ):
+            if (not isinstance(image, torch.Tensor)
+                    and not isinstance(image, PIL.Image.Image)
+                    and not isinstance(image, list)):
                 raise ValueError(
                     "`image` has to be of type `torch.FloatTensor` or `PIL.Image.Image` or `List[PIL.Image.Image]` but is"
-                    f" {type(image)}"
-                )
+                    f" {type(image)}")
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.prepare_latents
-    def prepare_latents(self, batch_size, num_channels_latents, height, width, dtype, device, generator, latents=None):
-        shape = (batch_size, num_channels_latents, height // self.vae_scale_factor, width // self.vae_scale_factor)
+    def prepare_latents(self,
+                        batch_size,
+                        num_channels_latents,
+                        height,
+                        width,
+                        dtype,
+                        device,
+                        generator,
+                        latents=None):
+        shape = (batch_size, num_channels_latents,
+                 height // self.vae_scale_factor,
+                 width // self.vae_scale_factor)
         if isinstance(generator, list) and len(generator) != batch_size:
             raise ValueError(
                 f"You have passed a list of generators of length {len(generator)}, but requested an effective batch"
@@ -538,7 +604,10 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             )
 
         if latents is None:
-            latents = randn_tensor(shape, generator=generator, device=device, dtype=dtype)
+            latents = randn_tensor(shape,
+                                   generator=generator,
+                                   device=device,
+                                   dtype=dtype)
         else:
             latents = latents.to(device)
 
@@ -567,22 +636,27 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         The embeddings are normalized before the noise is applied and un-normalized after the noise is applied.
         """
         if noise is None:
-            noise = randn_tensor(
-                image_embeds.shape, generator=generator, device=image_embeds.device, dtype=image_embeds.dtype
-            )
+            noise = randn_tensor(image_embeds.shape,
+                                 generator=generator,
+                                 device=image_embeds.device,
+                                 dtype=image_embeds.dtype)
 
-        noise_level = torch.tensor([noise_level] * image_embeds.shape[0], device=image_embeds.device)
+        noise_level = torch.tensor([noise_level] * image_embeds.shape[0],
+                                   device=image_embeds.device)
 
         self.image_normalizer.to(image_embeds.device)
         image_embeds = self.image_normalizer.scale(image_embeds)
 
-        image_embeds = self.image_noising_scheduler.add_noise(image_embeds, timesteps=noise_level, noise=noise)
+        image_embeds = self.image_noising_scheduler.add_noise(
+            image_embeds, timesteps=noise_level, noise=noise)
 
         image_embeds = self.image_normalizer.unscale(image_embeds)
 
         noise_level = get_timestep_embedding(
-            timesteps=noise_level, embedding_dim=image_embeds.shape[-1], flip_sin_to_cos=True, downscale_freq_shift=0
-        )
+            timesteps=noise_level,
+            embedding_dim=image_embeds.shape[-1],
+            flip_sin_to_cos=True,
+            downscale_freq_shift=0)
 
         # `get_timestep_embeddings` does not contain any weights and will always return f32 tensors,
         # but we might actually be running in fp16. so we need to cast here.
@@ -612,7 +686,8 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         negative_prompt_embeds: Optional[torch.FloatTensor] = None,
         output_type: Optional[str] = "pil",
         return_dict: bool = True,
-        callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
+        callback: Optional[Callable[[int, int, torch.FloatTensor],
+                                    None]] = None,
         callback_steps: int = 1,
         cross_attention_kwargs: Optional[Dict[str, Any]] = None,
         noise_level: int = 0,
@@ -780,8 +855,10 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
 
         # 8. Denoising loop
         for i, t in enumerate(self.progress_bar(timesteps)):
-            latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
-            latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+            latent_model_input = torch.cat(
+                [latents] * 2) if do_classifier_free_guidance else latents
+            latent_model_input = self.scheduler.scale_model_input(
+                latent_model_input, t)
 
             # predict the noise residual
             noise_pred = self.unet(
@@ -795,10 +872,12 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             # perform guidance
             if do_classifier_free_guidance:
                 noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-                noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                noise_pred = noise_pred_uncond + guidance_scale * (
+                    noise_pred_text - noise_pred_uncond)
 
             # compute the previous noisy sample x_t -> x_t-1
-            latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
+            latents = self.scheduler.step(noise_pred, t, latents,
+                                          **extra_step_kwargs).prev_sample
 
             if callback is not None and i % callback_steps == 0:
                 callback(i, t, latents)
@@ -807,7 +886,9 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         image = self.decode_latents(latents)
 
         # Offload last model to CPU
-        if hasattr(self, "final_offload_hook") and self.final_offload_hook is not None:
+        if hasattr(
+                self,
+                "final_offload_hook") and self.final_offload_hook is not None:
             self.final_offload_hook.offload()
 
         # 10. Convert to PIL
@@ -815,6 +896,6 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             image = self.numpy_to_pil(image)
 
         if not return_dict:
-            return (image,)
+            return (image, )
 
         return ImagePipelineOutput(images=image)
