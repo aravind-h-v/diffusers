@@ -219,7 +219,7 @@ def parse_prompt_attention(text):
     return res
 
 
-def get_prompts_with_weights(pipe: StableDiffusionPipeline, prompt: List[str],
+def get_prompts_with_weights(pipe, prompt: List[str],
                              max_length: int):
     r"""
     Tokenize a list of prompts and return its tokens with weights of each token.
@@ -296,7 +296,7 @@ def pad_tokens_and_weights(tokens,
 
 
 def get_unweighted_text_embeddings(
-    pipe: StableDiffusionPipeline,
+    pipe,
     text_input: torch.Tensor,
     chunk_length: int,
     no_boseos_middle: Optional[bool] = True,
@@ -337,7 +337,7 @@ def get_unweighted_text_embeddings(
 
 
 def get_weighted_text_embeddings(
-    pipe: StableDiffusionPipeline,
+    pipe,
     prompt: Union[str, List[str]],
     uncond_prompt: Optional[Union[str, List[str]]] = None,
     max_embeddings_multiples: Optional[int] = 3,

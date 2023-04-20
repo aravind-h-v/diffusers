@@ -5,7 +5,7 @@
 
 *** The commit message:
 #+begin_src conf :tangle message.txt
-  Minor cleanup of lpw code for controlnets
+  Fixed wrong references to StableDiffusionPipeline
 #+end_src
 
 *** Files to add:
@@ -210,7 +210,6 @@ Your branch is up to date with 'origin/main'.
 
 Changes to be committed:
   (use "git restore --staged <file>..." to unstage)
-	modified:   .gitignore
 	modified:   main.org
 	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_controlnet.py
 
@@ -228,8 +227,8 @@ Changes not staged for commit:
 #+end_src
 
 #+RESULTS:
-: [main 2e5ab443] Made the changes to allow long prompts in controlnet
-:  3 files changed, 749 insertions(+), 185 deletions(-)
+: [main 8e43d5dc] Minor cleanup of lpw code for controlnets
+:  2 files changed, 424 insertions(+), 148 deletions(-)
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
