@@ -473,7 +473,7 @@ def get_weighted_text_embeddings(
         previous_mean = text_embeddings.float().mean(axis=[-2, -1]).to(
             text_embeddings.dtype)
         text_embeddings = text_embeddings.to(pipe.device)
-        prompt_weights = prompt_weights.device(pipe.device)
+        prompt_weights = prompt_weights.to(pipe.device)
         text_embeddings *= prompt_weights.unsqueeze(-1)
         current_mean = text_embeddings.float().mean(axis=[-2, -1]).to(
             text_embeddings.dtype)

@@ -227,8 +227,8 @@ Changes not staged for commit:
 #+end_src
 
 #+RESULTS:
-: [main 9837e149] Fixed wrong references to StableDiffusionPipeline
-:  2 files changed, 6 insertions(+), 7 deletions(-)
+: [main 666e6c55] Fixed operations with mixed devices
+:  2 files changed, 8 insertions(+), 3 deletions(-)
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
