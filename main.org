@@ -5,7 +5,7 @@
 
 *** The commit message:
 #+begin_src conf :tangle message.txt
-  Fixed wrong references to StableDiffusionPipeline
+  Fixed operations with mixed devices
 #+end_src
 
 *** Files to add:
@@ -227,11 +227,14 @@ Changes not staged for commit:
 #+end_src
 
 #+RESULTS:
-: [main 8e43d5dc] Minor cleanup of lpw code for controlnets
-:  2 files changed, 424 insertions(+), 148 deletions(-)
+: [main 9837e149] Fixed wrong references to StableDiffusionPipeline
+:  2 files changed, 6 insertions(+), 7 deletions(-)
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
 #+end_src
 
 #+RESULTS:
+
+
+* COMMENT JUNK:
