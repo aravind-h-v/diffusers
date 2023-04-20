@@ -1,176 +1,132 @@
-# Initially taken from Github's Python gitignore file
-
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
+*.*~
 *$py.class
-
-# C extensions
-*.so
-
-# tests and logs
-tests/fixtures/cached_*_text.txt
-logs/
-lightning_logs/
-lang_code_data/
-
-# Distribution / packaging
-.Python
 build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
+.cache
+celerybeat-schedule
+clean_rm.sh
+clean_rm.txt
+*.cover
 .coverage
 .coverage.*
-.cache
-nosetests.xml
 coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
+/data
 db.sqlite3
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# celery beat schedule file
-celerybeat-schedule
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
+debug.env
+develop-eggs/
+dist/
 .dmypy.json
 dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# vscode
-.vs
-.vscode
-
-# Pycharm
-.idea
-
-# TF code
-tensorflow_code
-
-# Models
-proc_data
-
-# examples
-runs
-/runs_old
-/wandb
-/examples/runs
+docs/_build/
+downloads/
+.DS_Store
+*.egg
+*.egg-info/
+.eggs/
+eggs/
+.env
+env/
+ENV/
+env.bak/
 /examples/**/*.args
 /examples/rag/sweep
-
-# data
-/data
-serialization_dir
-
-# emacs
-*.*~
-debug.env
-
-# vim
-.*.swp
-
-#ctags
-tags
-
-# pre-commit
-.pre-commit*
-
-# .lock
+/examples/runs
+git_add.sh
+git_add.txt
+git_rm.sh
+git_rm.txt
+git_update.sh
+htmlcov/
+.hypothesis/
+.idea
+.installed.cfg
+instance/
+.ipynb_checkpoints
+ipython_config.py
+lang_code_data/
+lib/
+lib64/
+lightning_logs/
+local_settings.py
 *.lock
-
-# DS_Store (MacOS)
-.DS_Store
-# RL pipelines may produce mp4 outputs
+*.log
+logs/
+*.manifest
+MANIFEST
+message.txt
+*.mo
 *.mp4
-
-# dependencies
-/transformers
-
-# ruff
+.mypy_cache/
+nosetests.xml
+.nox/
+parts/
+pip-delete-this-directory.txt
+pip-log.txt
+*.pot
+.pre-commit*
+proc_data
+profile_default/
+__pycache__/
+*.py[cod]
+.pyre/
+.pytest_cache/
+.Python
+.python-version
+rm.sh
+rm.txt
+.ropeproject
 .ruff_cache
-
+runs
+/runs_old
+*.sage.py
+.scrapy
+sdist/
+serialization_dir
+/site
+*.so
+*.spec
+.spyderproject
+.spyproject
+src/diffusers.egg-info/
+src/diffusers/models/__pycache__/
+src/diffusers/pipelines/alt_diffusion/__pycache__/
+src/diffusers/pipelines/audioldm/__pycache__/
+src/diffusers/pipelines/dance_diffusion/__pycache__/
+src/diffusers/pipelines/ddim/__pycache__/
+src/diffusers/pipelines/ddpm/__pycache__/
+src/diffusers/pipelines/dit/__pycache__/
+src/diffusers/pipelines/latent_diffusion/__pycache__/
+src/diffusers/pipelines/latent_diffusion_uncond/__pycache__/
+src/diffusers/pipelines/paint_by_example/__pycache__/
+src/diffusers/pipelines/pndm/__pycache__/
+src/diffusers/pipelines/__pycache__/
+src/diffusers/pipelines/repaint/__pycache__/
+src/diffusers/pipelines/score_sde_ve/__pycache__/
+src/diffusers/pipelines/semantic_stable_diffusion/__pycache__/
+src/diffusers/pipelines/spectrogram_diffusion/__pycache__/
+src/diffusers/pipelines/stable_diffusion/__pycache__/
+src/diffusers/pipelines/stable_diffusion_safe/__pycache__/
+src/diffusers/pipelines/stochastic_karras_ve/__pycache__/
+src/diffusers/pipelines/text_to_video_synthesis/__pycache__/
+src/diffusers/pipelines/unclip/__pycache__/
+src/diffusers/pipelines/versatile_diffusion/__pycache__/
+src/diffusers/pipelines/vq_diffusion/__pycache__/
+src/diffusers/__pycache__/
+src/diffusers/schedulers/__pycache__/
+src/diffusers/utils/__pycache__/
+.*.swp
+tags
+target/
+tensorflow_code
+tests/fixtures/cached_*_text.txt
+.tox/
+/transformers
+var/
+.venv
+venv/
+venv.bak/
+.vs
+.vscode
+/wandb
 wandb
+.webassets-cache
+wheels/

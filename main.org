@@ -1,3 +1,14 @@
+
+* Git management related:
+
+** List of files to add, remove and ignore:
+
+*** The commit message:
+#+begin_src conf :tangle message.txt
+  Made the changes to allow long prompts in controlnet
+#+end_src
+
+*** Files to add:
 #+begin_src conf :tangle ./git_add.txt
   main.org
   pyproject.toml.bak
@@ -8,72 +19,215 @@
   unclip_seeded.org
   sample/in1.png
   sample/in2.png
+  src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_controlnet.py
+  .gitignore
 #+end_src
 
-#+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_add.sh
-  sed 's@^@("git" "add" "@g ; s@$@");@g' './git_add.txt' | '/bin/sh'
-#+end_src
-
-#+begin_src conf :tangle ./clean_rm.txt
+*** Files to remove:
+#+begin_src conf :tangle rm.txt
   #main.org#
   .#main.org
+  main.org~
+  .main.org.~undo-tree~
   src/diffusers/pipelines/stable_diffusion/#pipeline_stable_diffusion_img2img.py#
   src/diffusers/pipelines/stable_diffusion/.#pipeline_stable_diffusion_img2img.py
+  src/diffusers/pipelines/stable_diffusion/.pipeline_stable_diffusion_img2img.py.~undo-tree~
+  src/diffusers/pipelines/stable_diffusion/.pipeline_stable_unclip_img2img.py.~undo-tree~
+  .unclip_seeded.org.~undo-tree~
 #+end_src
 
-#+begin_src sh :results output :shebang #!/bin/sh :tangle ./clean_rm.sh
-  sed 's@^@("rm" "-vf" "--" "@g ; s@$@");@g' './clean_rm.txt' | '/bin/sh'
+*** Files to ignore:
+#+begin_src conf :tangle .gitignore
+  ,*.*~
+  ,*$py.class
+  build/
+  .cache
+  celerybeat-schedule
+  clean_rm.sh
+  clean_rm.txt
+  ,*.cover
+  .coverage
+  .coverage.*
+  coverage.xml
+  /data
+  db.sqlite3
+  debug.env
+  develop-eggs/
+  dist/
+  .dmypy.json
+  dmypy.json
+  docs/_build/
+  downloads/
+  .DS_Store
+  ,*.egg
+  ,*.egg-info/
+  .eggs/
+  eggs/
+  .env
+  env/
+  ENV/
+  env.bak/
+  /examples/**/*.args
+  /examples/rag/sweep
+  /examples/runs
+  git_add.sh
+  git_add.txt
+  git_rm.sh
+  git_rm.txt
+  git_update.sh
+  htmlcov/
+  .hypothesis/
+  .idea
+  .installed.cfg
+  instance/
+  .ipynb_checkpoints
+  ipython_config.py
+  lang_code_data/
+  lib/
+  lib64/
+  lightning_logs/
+  local_settings.py
+  ,*.lock
+  ,*.log
+  logs/
+  ,*.manifest
+  MANIFEST
+  message.txt
+  ,*.mo
+  ,*.mp4
+  .mypy_cache/
+  nosetests.xml
+  .nox/
+  parts/
+  pip-delete-this-directory.txt
+  pip-log.txt
+  ,*.pot
+  .pre-commit*
+  proc_data
+  profile_default/
+  __pycache__/
+  ,*.py[cod]
+  .pyre/
+  .pytest_cache/
+  .Python
+  .python-version
+  rm.sh
+  rm.txt
+  .ropeproject
+  .ruff_cache
+  runs
+  /runs_old
+  ,*.sage.py
+  .scrapy
+  sdist/
+  serialization_dir
+  /site
+  ,*.so
+  ,*.spec
+  .spyderproject
+  .spyproject
+  src/diffusers.egg-info/
+  src/diffusers/models/__pycache__/
+  src/diffusers/pipelines/alt_diffusion/__pycache__/
+  src/diffusers/pipelines/audioldm/__pycache__/
+  src/diffusers/pipelines/dance_diffusion/__pycache__/
+  src/diffusers/pipelines/ddim/__pycache__/
+  src/diffusers/pipelines/ddpm/__pycache__/
+  src/diffusers/pipelines/dit/__pycache__/
+  src/diffusers/pipelines/latent_diffusion/__pycache__/
+  src/diffusers/pipelines/latent_diffusion_uncond/__pycache__/
+  src/diffusers/pipelines/paint_by_example/__pycache__/
+  src/diffusers/pipelines/pndm/__pycache__/
+  src/diffusers/pipelines/__pycache__/
+  src/diffusers/pipelines/repaint/__pycache__/
+  src/diffusers/pipelines/score_sde_ve/__pycache__/
+  src/diffusers/pipelines/semantic_stable_diffusion/__pycache__/
+  src/diffusers/pipelines/spectrogram_diffusion/__pycache__/
+  src/diffusers/pipelines/stable_diffusion/__pycache__/
+  src/diffusers/pipelines/stable_diffusion_safe/__pycache__/
+  src/diffusers/pipelines/stochastic_karras_ve/__pycache__/
+  src/diffusers/pipelines/text_to_video_synthesis/__pycache__/
+  src/diffusers/pipelines/unclip/__pycache__/
+  src/diffusers/pipelines/versatile_diffusion/__pycache__/
+  src/diffusers/pipelines/vq_diffusion/__pycache__/
+  src/diffusers/__pycache__/
+  src/diffusers/schedulers/__pycache__/
+  src/diffusers/utils/__pycache__/
+  .*.swp
+  tags
+  target/
+  tensorflow_code
+  tests/fixtures/cached_*_text.txt
+  .tox/
+  /transformers
+  var/
+  .venv
+  venv/
+  venv.bak/
+  .vs
+  .vscode
+  /wandb
+  wandb
+  .webassets-cache
+  wheels/
 #+end_src
 
-#+begin_src sh :results output :shebang #!/bin/sh :tangle ./git_update.sh
-  ./git_add.sh
-  ./clean_rm.sh
+** The actual scripts to do the dirty work:
+
+*** Files to add:
+#+begin_src sh :shebang #!/bin/sh :tangle git_add.sh :results output
+  sed "s/^/(git add '/g ; s/\$/');/g" 'git_add.txt' | sh
+#+end_src
+
+*** Files to remove:
+#+begin_src sh :shebang #!/bin/sh :tangle rm.sh :results output
+  sed "s/^/(rm -vf -- '/g ; s/\$/');/g" 'rm.txt' | sh
+#+end_src
+
+** Make all the changes and check status:
+
+*** This file stuff:
+#+begin_src emacs-lisp :results output
+  (save-buffer) 
+  (save-some-buffers) 
+  (org-babel-tangle)
 #+end_src
 
 #+RESULTS:
 
-#+begin_src sh :results output :shebang #!/bin/sh
+*** Run the git management parts:
+#+begin_src sh :shebang #!/bin/sh :results output
+  ./git_add.sh
+  ./rm.sh
   git status
 #+end_src
 
 #+RESULTS:
 #+begin_example
+removed '.main.org.~undo-tree~'
 On branch main
 Your branch is up to date with 'origin/main'.
 
 Changes to be committed:
   (use "git restore --staged <file>..." to unstage)
+	modified:   .gitignore
 	modified:   main.org
-	new file:   sample/in1.png
-	new file:   sample/in2.png
+	modified:   src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_controlnet.py
 
 Changes not staged for commit:
   (use "git add/rm <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
 	deleted:    pyproject.toml
 
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	clean_rm.sh
-	clean_rm.txt
-	git_add.sh
-	git_add.txt
-	git_rm.sh
-	git_rm.txt
-	git_update.sh
-
 #+end_example
 
 #+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='Added comparison between seeded and unseeded unclip works, the input images unsed are also included'
+  MESSAGE='Merging with upstream'
   git commit -m "${MESSAGE}."
 #+end_src
 
 #+RESULTS:
-: [main 5102cc29] Added comparison between seeded and unseeded unclip works, the input images unsed are also included.
-:  3 files changed, 9 insertions(+), 10 deletions(-)
-:  create mode 100644 sample/in1.png
-:  create mode 100644 sample/in2.png
+: [main d4bbfe0b] Merging with upstream.
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
