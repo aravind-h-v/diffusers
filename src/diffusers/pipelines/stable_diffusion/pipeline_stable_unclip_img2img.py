@@ -20,6 +20,11 @@ import torch
 from ...configuration_utils import FrozenDict
 from ...image_processor import VaeImageProcessor
 from . import StableDiffusionPipelineOutput
+from diffusers.utils.import_utils import is_accelerate_available
+
+from ...loaders import TextualInversionLoaderMixin
+from ...models import AutoencoderKL, UNet2DConditionModel
+
 from ...models.embeddings import get_timestep_embedding
 from .safety_checker import StableDiffusionSafetyChecker
 from ...schedulers import KarrasDiffusionSchedulers
@@ -97,7 +102,8 @@ def preprocess(image):
     return image
 
 
-class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
+class StableUnCLIPImg2ImgPipeline(DiffusionPipeline,
+                                  TextualInversionLoaderMixin):
     """
     Pipeline for text-guided image to image generation using stable unCLIP.
 
@@ -322,6 +328,10 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
             batch_size = prompt_embeds.shape[0]
 
         if prompt_embeds is None:
+            # textual inversion: procecss multi-vector tokens if necessary
+            if isinstance(self, TextualInversionLoaderMixin):
+                prompt = self.maybe_convert_prompt(prompt, self.tokenizer)
+
             text_inputs = self.tokenizer(
                 prompt,
                 padding="max_length",
@@ -382,6 +392,11 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
                     " the batch size of `prompt`.")
             else:
                 uncond_tokens = negative_prompt
+
+            # textual inversion: procecss multi-vector tokens if necessary
+            if isinstance(self, TextualInversionLoaderMixin):
+                uncond_tokens = self.maybe_convert_prompt(
+                    uncond_tokens, self.tokenizer)
 
             max_length = prompt_embeds.shape[1]
             uncond_input = self.tokenizer(
@@ -939,7 +954,7 @@ class StableUnCLIPImg2ImgPipeline(DiffusionPipeline):
         # timesteps = self.scheduler.timesteps
 
         # 6. Prepare latent variables
-        num_channels_latents = self.unet.in_channels
+        num_channels_latents = self.unet.config.in_channels
         latents = self.prepare_latents(
             batch_size=batch_size,
             num_channels_latents=num_channels_latents,
