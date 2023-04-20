@@ -477,6 +477,8 @@ def get_weighted_text_embeddings(
         text_embeddings *= prompt_weights.unsqueeze(-1)
         current_mean = text_embeddings.float().mean(axis=[-2, -1]).to(
             text_embeddings.dtype)
+        previous_mean = previous_mean.to(pipe.device)
+        current_mean = current_mean.to(pipe.device)
         text_embeddings *= (previous_mean /
                             current_mean).unsqueeze(-1).unsqueeze(-1)
         if uncond_prompt is not None:
