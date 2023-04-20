@@ -5,7 +5,7 @@
 
 *** The commit message:
 #+begin_src conf :tangle message.txt
-  Made the changes to allow long prompts in controlnet
+  Minor cleanup of lpw code for controlnets
 #+end_src
 
 *** Files to add:
@@ -221,13 +221,15 @@ Changes not staged for commit:
 
 #+end_example
 
-#+begin_src sh :results output :shebang #!/bin/sh
-  MESSAGE='Merging with upstream'
-  git commit -m "${MESSAGE}."
+** Commit the changes and push:
+#+begin_src sh :shebang #!/bin/sh :results output
+  git commit -m "$(cat 'message.txt')"
+  git push 
 #+end_src
 
 #+RESULTS:
-: [main d4bbfe0b] Merging with upstream.
+: [main 2e5ab443] Made the changes to allow long prompts in controlnet
+:  3 files changed, 749 insertions(+), 185 deletions(-)
 
 #+begin_src sh :results output :shebang #!/bin/sh
   git push
